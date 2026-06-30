@@ -240,6 +240,10 @@ table.dtable tr:hover td{background:var(--azul-bg);}
     <div class="pill-row" id="filterNegocio"></div>
   </div>
   <div class="filter-group">
+    <div class="filter-label">Ano <span style="font-weight:400; text-transform:none; color:var(--cinza-500);">(Data Alvo de Captura)</span></div>
+    <div class="pill-row" id="filterAno"></div>
+  </div>
+  <div class="filter-group">
     <div class="filter-label">Status <span style="font-weight:400; text-transform:none; color:var(--cinza-500);">(clique para excluir)</span></div>
     <div class="pill-row" id="filterStatus"></div>
   </div>
@@ -495,7 +499,7 @@ const ALL_STATUS = ['On time','Risco de atraso','Atrasado','Em negociação','N�
 const ALL_CATS = [...new Set(RAW.map(r=>r.cat))].sort();
 const catCounts = (()=>{const m=new Map(); RAW.forEach(r=>m.set(r.cat,(m.get(r.cat)||0)+1)); return m;})();
 
-let state = { ger:new Set(['Todas']), neg:new Set(['Todas']), status:new Set(ALL_STATUS), catSel:'' };
+let state = { ger:new Set(['Todas']), neg:new Set(['Todas']), status:new Set(ALL_STATUS), catSel:'', ano:new Set(['Todas']) };
 
 function buildPills(containerId, items, group){
   const el = document.getElementById(containerId);
@@ -553,6 +557,9 @@ function refreshPillUI(){
   document.getElementById('filterNegocio').querySelectorAll('.pill').forEach(p=>{
     p.classList.toggle('active', state.neg.has(p.dataset.value));
   });
+  document.getElementById('filterAno').querySelectorAll('.pill').forEach(p=>{
+    p.classList.toggle('active', state.ano.has(p.dataset.value));
+  });
   document.getElementById('filterStatus').querySelectorAll('.pill').forEach(p=>{
     if(p.dataset.value==='Todas'){
       p.classList.toggle('active', state.status.size===ALL_STATUS.length);
@@ -579,6 +586,13 @@ buildStatusPills();
   sel.onchange = ()=>{ state.catSel = sel.value; renderAll(); };
 })();
 
+// ---------------- ANO HELPERS (filtro global de cabeçalho) ----------------
+function anoOf(r){ return r.d2 ? r.d2.slice(0,4) : 'Sem data'; }
+const ANOS_RAW = [...new Set(RAW.map(anoOf))];
+const ANOS_ORDERED = ANOS_RAW.filter(a=>a!=='Sem data').sort().concat(ANOS_RAW.includes('Sem data')?['Sem data']:[]);
+
+buildPills('filterAno', ANOS_ORDERED, 'ano');
+
 // ---------------- TABS ----------------
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.onclick = ()=>{
@@ -594,6 +608,7 @@ function filtered(){
   return RAW.filter(r=>{
     if(!state.ger.has('Todas') && !state.ger.has(r.ger)) return false;
     if(!state.neg.has('Todas') && !state.neg.has(r.n)) return false;
+    if(!state.ano.has('Todas') && !state.ano.has(anoOf(r))) return false;
     if(!state.status.has(r.s)) return false;
     if(state.catSel && r.cat!==state.catSel) return false;
     return true;
