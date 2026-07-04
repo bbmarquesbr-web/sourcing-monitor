@@ -254,7 +254,8 @@ table.dtable tr:hover td{background:var(--azul-bg);}
 </div>
 
 <div class="tabbar" id="tabbar">
-  <button class="tab-btn active" data-page="exec">Visão Executiva</button>
+  <button class="tab-btn active" data-page="estrategica">📊 Visão Estratégica</button>
+  <button class="tab-btn" data-page="exec">Visão Executiva</button>
   <button class="tab-btn" data-page="pipeline">Pipeline &amp; Gates</button>
   <button class="tab-btn" data-page="workload">Workload</button>
   <button class="tab-btn" data-page="alertas">Alertas &amp; Pendências</button>
@@ -265,7 +266,7 @@ table.dtable tr:hover td{background:var(--azul-bg);}
 <!-- ============================================================ -->
 <!-- PAGE 1: VISÃO EXECUTIVA -->
 <!-- ============================================================ -->
-<div class="page active" id="page-exec">
+<div class="page" id="page-exec">
   <div class="note-banner">
     <span>📊</span>
     <div><b>Visão Executiva</b> — consolida as 9 bases carregadas no GCP. Atende
@@ -635,6 +636,212 @@ SWITCH([Gate Num],
 </div>
 
 
+<!-- PAGE: VISÃO ESTRATÉGICA -->
+<div class="page active" id="page-estrategica">
+  <div class="note-banner" style="background:linear-gradient(90deg,#EEF3FA,#fff);border:1px solid #D6E4F0;">
+    <span>🎯</span>
+    <div><b>Visão Estratégica</b> — responde as três perguntas que o board faz:
+      <b>(1)</b> Quanto realmente capturaremos?
+      <b>(2)</b> Quanto está em risco?
+      <b>(3)</b> O pipeline é suficiente para o desafio do orçamento?
+      Modelo de probabilidade baseado em gate atual, status e SLA — replicável em Power BI via DAX (guia abaixo).
+    </div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="grid g4" style="margin-bottom:14px;">
+    <div class="card kpi" style="--accent:var(--azul-med)">
+      <div class="kpi-label">Captura Esperada (Prob.-Weighted)</div>
+      <div class="kpi-value" id="kpiExpected">–<span class="unit">R$ MM</span></div>
+      <div class="kpi-sub" id="kpiExpectedSub">–</div>
+    </div>
+    <div class="card kpi" style="--accent:var(--vermelho)">
+      <div class="kpi-label">Value at Risk</div>
+      <div class="kpi-value" id="kpiVaR" style="color:var(--vermelho)">–<span class="unit">R$ MM</span></div>
+      <div class="kpi-sub" id="kpiVaRSub">Iniciativas com P(captura) &lt; 50%</div>
+    </div>
+    <div class="card kpi" style="--accent:var(--laranja)">
+      <div class="kpi-label">Cobertura vs Spend PB</div>
+      <div class="kpi-value" id="kpiCoverage">–<span class="unit">%</span></div>
+      <div class="kpi-sub" id="kpiCoverageSub">Benchmark de mercado: 2–5%</div>
+    </div>
+    <div class="card kpi" style="--accent:var(--verde)">
+      <div class="kpi-label">Pipeline Health Score</div>
+      <div class="kpi-value" id="kpiHealth">–<span class="unit">/100</span></div>
+      <div class="kpi-sub" id="kpiHealthSub">SLA + captura + qualidade de dados</div>
+    </div>
+  </div>
+
+  <!-- Insight boxes -->
+  <div class="grid g3" style="margin-bottom:14px;">
+    <div style="background:#fff;border-left:4px solid var(--vermelho);padding:14px 16px;border-radius:8px;box-shadow:var(--shadow)">
+      <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--vermelho);margin-bottom:5px">🔴 Value at Risk</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--cinza-900);margin-bottom:6px;line-height:1.3" id="insightVaRTitle">–</div>
+      <div style="font-size:11px;color:var(--cinza-700);line-height:1.5" id="insightVaR">–</div>
+      <div style="font-size:10px;color:var(--cinza-500);margin-top:8px;font-style:italic">Implicação → Priorizar revisão de gate com as lideranças e definir plano de aceleração ou substituição de iniciativas.</div>
+    </div>
+    <div style="background:#fff;border-left:4px solid var(--laranja);padding:14px 16px;border-radius:8px;box-shadow:var(--shadow)">
+      <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--laranja);margin-bottom:5px">🟡 Gargalo Jurídico</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--cinza-900);margin-bottom:6px;line-height:1.3" id="insightJuridicoTitle">–</div>
+      <div style="font-size:11px;color:var(--cinza-700);line-height:1.5" id="insightJuridico">–</div>
+      <div style="font-size:10px;color:var(--cinza-500);margin-top:8px;font-style:italic">Implicação → Alinhar capacidade jurídica com antecedência mínima de 60 dias antes do pico projetado.</div>
+    </div>
+    <div style="background:#fff;border-left:4px solid var(--azul-med);padding:14px 16px;border-radius:8px;box-shadow:var(--shadow)">
+      <div style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--azul-med);margin-bottom:5px">🔵 Cobertura do Pipeline</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--cinza-900);margin-bottom:6px;line-height:1.3" id="insightCoverageTitle">–</div>
+      <div style="font-size:11px;color:var(--cinza-700);line-height:1.5" id="insightCoverage">–</div>
+      <div style="font-size:10px;color:var(--cinza-500);margin-top:8px;font-style:italic">Implicação → Benchmark peers (papel/celulose): 2–5% de economia sobre spend endereçável como meta anual.</div>
+    </div>
+  </div>
+
+  <!-- Funnel + Scenarios -->
+  <div class="grid g2" style="margin-bottom:14px;">
+    <div class="card">
+      <div class="card-title">Funil de Savings — Identified → Realized
+        <span class="info">PBI: Waterfall / Funnel · DAX: CALCULATE([Pot],Gate&gt;=N)</span>
+      </div>
+      <div class="chart-wrap tall"><canvas id="chartFunilSavings"></canvas></div>
+      <div style="font-size:9.5px;color:#9098A8;margin-top:6px;">Cada estágio representa o potencial financeiro comprometido a partir daquele gate. A diferença entre "Comprometido" e "Realizado" é o gap de execução.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Análise de Cenários 2026 — Bear / Base / Bull
+        <span class="info">PBI: Clustered Bar + What-If Parameter · DAX: prob-weighted SUM</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:120px;background:var(--cinza-100);border-radius:6px;padding:10px 12px;text-align:center">
+          <div style="font-size:9.5px;font-weight:700;color:var(--cinza-500);text-transform:uppercase">🐻 Bear</div>
+          <div style="font-size:16px;font-weight:800;color:var(--cinza-escc, #4A5160);margin-top:4px" id="scenBear">–</div>
+          <div style="font-size:9px;color:var(--cinza-500);margin-top:2px">Gate 5–6 + já realizado</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:var(--azul-bg);border-radius:6px;padding:10px 12px;text-align:center;border:1px solid var(--azul-clar)">
+          <div style="font-size:9.5px;font-weight:700;color:var(--azul-med);text-transform:uppercase">🎯 Base</div>
+          <div style="font-size:16px;font-weight:800;color:var(--azul-esc);margin-top:4px" id="scenBase">–</div>
+          <div style="font-size:9px;color:var(--cinza-500);margin-top:2px">Prob.-weighted + realizado</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:var(--verde-clar);border-radius:6px;padding:10px 12px;text-align:center">
+          <div style="font-size:9.5px;font-weight:700;color:var(--verde);text-transform:uppercase">🚀 Bull</div>
+          <div style="font-size:16px;font-weight:800;color:var(--verde);margin-top:4px" id="scenBull">–</div>
+          <div style="font-size:9px;color:var(--cinza-500);margin-top:2px">100% potencial + realizado</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartScenarios"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Prob dist + Coverage -->
+  <div class="grid g2" style="margin-bottom:14px;">
+    <div class="card">
+      <div class="card-title">Distribuição de P(Captura) por Iniciativa
+        <span class="info">PBI: Histogram · DAX: [% SLA] × [Gate] × [Status]</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chartProbDist"></canvas></div>
+      <div style="font-size:9.5px;color:#9098A8;margin-top:6px;">Quanto mais concentrada a esquerda, maior a exposição. Objetivo: migrar iniciativas para faixas de 60–100%.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Cobertura por Gerência — Potencial / Spend PB (%)
+        <span class="info">PBI: Clustered Bar + linha de meta · DAX: DIVIDE([Pot],[SpendPB])</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chartCoverageGer"></canvas></div>
+      <div style="font-size:9.5px;color:#9098A8;margin-top:6px;">Linhas de referência: 2% (mínimo) e 5% (benchmark peers). Abaixo do mínimo = pipeline insuficiente.</div>
+    </div>
+  </div>
+
+  <!-- RAG table -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-title">Painel RAG por Gerência
+      <span class="info">PBI: Matrix com formatação condicional · Score = P(captura) média × SLA health</span>
+    </div>
+    <table class="dtable">
+      <thead><tr>
+        <th>Gerência</th><th style="text-align:center">Status RAG</th>
+        <th style="text-align:center">Total</th><th style="text-align:center">Ativos</th>
+        <th style="text-align:right">Spend PB (MM)</th>
+        <th style="text-align:right">Potencial (MM)</th>
+        <th style="text-align:right">Captura Esperada</th>
+        <th style="text-align:right">Realizado (MM)</th>
+        <th style="text-align:center">Em Risco SLA</th>
+      </tr></thead>
+      <tbody id="tableRagBody"></tbody>
+    </table>
+  </div>
+
+  <!-- PBI Guide -->
+  <div class="card" style="border:1px solid var(--azul-med);background:var(--azul-bg);">
+    <div class="card-title">🗺 Modelo de Probabilidade — Replicação em Power BI (DAX)
+      <span class="info">Todas as medidas são determinísticas e auditáveis — sem caixa preta</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;font-size:11px;">
+      <div>
+        <div style="font-weight:700;color:var(--azul-esc);margin-bottom:6px;">Prob. Base por Gate</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:9.5px;line-height:1.7;border:1px solid var(--cinza-300)">P Base Gate =
+SWITCH([Gate Num],
+  0, 0.10,  1, 0.20,
+  2, 0.40,  3, 0.60,
+  4, 0.75,  5, 0.90,
+  6, 1.00,  0.15)</code>
+        <div style="font-weight:700;color:var(--azul-esc);margin:10px 0 6px;">Multiplicador de Status</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:9.5px;line-height:1.7;border:1px solid var(--cinza-300)">Mult Status =
+SWITCH([Status],
+  "On time",       1.00,
+  "Em negociação", 0.95,
+  "Não iniciado",  0.85,
+  "Risco atraso",  0.75,
+  "Não informado", 0.70,
+  "Atrasado",      0.50,
+  "On hold",       0.30,
+  "Concluído",     1.00,
+  "Cancelado",     0.00,  0.70)</code>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--azul-esc);margin-bottom:6px;">Multiplicador de SLA</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:9.5px;line-height:1.7;border:1px solid var(--cinza-300)">Mult SLA =
+VAR pct = [% SLA Consumido]
+RETURN
+SWITCH(TRUE(),
+  pct >= 1.00, 0.50,
+  pct >= 0.90, 0.70,
+  pct >= 0.75, 0.90,
+  ISBLANK(pct), 0.80,
+  1.00)</code>
+        <div style="font-weight:700;color:var(--azul-esc);margin:10px 0 6px;">P(Captura) Final</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:9.5px;line-height:1.7;border:1px solid var(--cinza-300)">P Captura =
+MIN(1,
+  [P Base Gate] *
+  [Mult Status] *
+  [Mult SLA]
+)
+// Formatar como %</code>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--azul-esc);margin-bottom:6px;">Captura Esperada (Weighted)</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:9.5px;line-height:1.7;border:1px solid var(--cinza-300)">Captura Esperada MM =
+SUMX(
+  Iniciativas,
+  [P Captura] *
+  [Potencial MM]
+)</code>
+        <div style="font-weight:700;color:var(--azul-esc);margin:10px 0 6px;">Value at Risk</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:9.5px;line-height:1.7;border:1px solid var(--cinza-300)">Value at Risk MM =
+CALCULATE(
+  SUM([Potencial MM]),
+  [P Captura] < 0.5,
+  [Status] <> "Cancelado"
+)
+// Formatar: R$ #.##0,00</code>
+        <div style="font-weight:700;color:var(--azul-esc);margin:10px 0 6px;">RAG Score</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:9.5px;line-height:1.7;border:1px solid var(--cinza-300)">RAG =
+VAR score =
+  AVERAGEX(Iniciativas, [P Captura])
+RETURN
+IF(score>0.55,"🟢 Verde",
+  IF(score>0.30,"🟡 Amarelo",
+    "🔴 Vermelho"))</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <div class="footer-note">
   Mockup gerado a partir das 9 bases reais consolidadas (2.445 iniciativas) · Estrutura de referência para construção do painel definitivo em Power BI / GCP
 </div>
@@ -939,8 +1146,191 @@ function renderEsteiraPredicao(data){
 }
 
 
+
+// ============================================================
+// PAGE: VISÃO ESTRATÉGICA — Modelo de probabilidade
+// ============================================================
+const GATE_PROB_E   = {0:0.10,1:0.20,2:0.40,3:0.60,4:0.75,5:0.90,6:1.00};
+const STATUS_MULT_E = {
+  'On time':1.0,'Em negociação':0.95,'Não iniciado':0.85,
+  'Risco de atraso':0.75,'Não informado':0.70,
+  'Atrasado':0.50,'On hold':0.30,'Concluído':1.0,'Cancelado':0.0
+};
+const SLA_MULT_E = {ok:1.0,atencao:0.90,critico:0.70,vencido:0.50,sem_data:0.80};
+
+function pCapture(r){
+  const gp = GATE_PROB_E[gateNum(r.g)] ?? 0.15;
+  const sm = STATUS_MULT_E[r.s]        ?? 0.70;
+  const en = enrichSLA(r);
+  const lm = SLA_MULT_E[en.status]     ?? 0.80;
+  return Math.min(1, gp * sm * lm);
+}
+
+function renderEstrategica(data){
+  const active = data.filter(r=>r.s!=='Cancelado');
+  const ativos  = active.filter(r=>r.s!=='Concluído');
+
+  // ── Core metrics ──────────────────────────────────────────
+  const expectedCap = active.reduce((s,r)=>s+pCapture(r)*r.pot,0);
+  const vaR         = active.filter(r=>pCapture(r)<0.5&&r.s!=='Concluído').reduce((s,r)=>s+r.pot,0);
+  const spendPB     = sum(active,'pb');
+  const potTotal    = sum(active,'pot');
+  const coverage    = spendPB>0 ? potTotal/spendPB*100 : 0;
+
+  // Health score: SLA adherence (35%) + capture rate (35%) + data quality (30%)
+  const enrichedAtivos = ativos.map(enrichSLA);
+  const pctSlaOk   = enrichedAtivos.length ? enrichedAtivos.filter(r=>r.status==='ok').length/enrichedAtivos.length : 0;
+  const capRate     = potTotal>0 ? sum(data,'cap')/potTotal : 0;
+  const dataQuality = active.filter(r=>r.d1&&r.g&&r.g!=='Não informado'&&r.s&&r.s!=='Não informado').length/(active.length||1);
+  const healthScore = Math.round((pctSlaOk*0.35+capRate*0.35+dataQuality*0.30)*100);
+
+  // ── KPIs ──────────────────────────────────────────────────
+  document.getElementById('kpiExpected').innerHTML    = fmt(expectedCap)+'<span class="unit">R$ MM</span>';
+  document.getElementById('kpiExpectedSub').textContent = potTotal>0?`${fmt(expectedCap/potTotal*100,1)}% do potencial identificado`:'—';
+  document.getElementById('kpiVaR').innerHTML          = fmt(vaR)+'<span class="unit">R$ MM</span>';
+  document.getElementById('kpiVaRSub').textContent      = active.filter(r=>pCapture(r)<0.5&&r.s!=='Concluído').length+' iniciativas com P(captura) < 50%';
+  document.getElementById('kpiCoverage').innerHTML      = fmt(coverage,1)+'<span class="unit">%</span>';
+  const cvEl=document.getElementById('kpiCoverageSub');
+  const benchOk=coverage>=2&&coverage<=8;
+  cvEl.textContent=benchOk?'✓ Dentro do benchmark (2–5%)':coverage<2?'⚠ Abaixo do benchmark mínimo (2%)':'⚠ Acima do benchmark máximo (8%)';
+  cvEl.className='kpi-sub '+(benchOk?'up':'down');
+  document.getElementById('kpiHealth').innerHTML     = healthScore+'<span class="unit">/100</span>';
+  const hEl=document.getElementById('kpiHealthSub');
+  hEl.textContent=healthScore>=70?'🟢 Saudável':healthScore>=50?'🟡 Atenção':'🔴 Crítico';
+  hEl.className='kpi-sub '+(healthScore>=70?'up':healthScore>=50?'':'down');
+
+  // ── Insight boxes ──────────────────────────────────────────
+  const nRisco=active.filter(r=>pCapture(r)<0.5&&r.s!=='Concluído').length;
+  const topRisk=[...new Set(data.map(r=>r.ger))].map(ger=>{
+    const gd=data.filter(r=>r.ger===ger&&r.s!=='Cancelado'&&r.s!=='Concluído');
+    return {ger,vaR:gd.filter(r=>pCapture(r)<0.5).reduce((s,r)=>s+r.pot,0)};
+  }).sort((a,b)=>b.vaR-a.vaR)[0];
+  document.getElementById('kpiVaRSub').textContent=nRisco+' iniciativas com P(captura) < 50%';
+  document.getElementById('insightVaRTitle').textContent=`R$ ${fmt(vaR)} MM com probabilidade < 50%`;
+  document.getElementById('insightVaR').textContent=`${nRisco} iniciativas ativas possuem baixa probabilidade de captura no prazo, representando R$ ${fmt(vaR)} MM expostos. ${topRisk?`Gerência com maior exposição: ${topRisk.ger} (R$ ${fmt(topRisk.vaR)} MM).`:''}`;
+
+  // Juridico peak
+  const enAll=ativos.map(enrichSLA);
+  const jurMap=new Map();
+  enAll.forEach(r=>{if(r.projGate4&&r.legalRisk){const k=`${r.projGate4.getFullYear()}-${String(r.projGate4.getMonth()+1).padStart(2,'0')}`;jurMap.set(k,(jurMap.get(k)||0)+1);}});
+  const jurPeak=[...jurMap.entries()].sort((a,b)=>b[1]-a[1])[0];
+  if(jurPeak){
+    const [yy,mm]=jurPeak[0].split('-');
+    const nomeMes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mm)-1];
+    document.getElementById('insightJuridicoTitle').textContent=`Pico de ${jurPeak[1]} contratos jurídicos em ${nomeMes}/${yy}`;
+    document.getElementById('insightJuridico').textContent=`${jurPeak[1]} iniciativas com Spend PB > R$ 5MM projetadas para chegar à formalização em ${nomeMes}/${yy}. Contratos desta faixa têm SLA de 70–120 dias. Cada semana de atraso jurídico custa impacto financeiro direto.`;
+  } else {
+    document.getElementById('insightJuridicoTitle').textContent='Sem pico jurídico identificado';
+    document.getElementById('insightJuridico').textContent='Nenhuma concentração crítica de contratos ≥ R$ 5MM projetada para os próximos 8 meses.';
+  }
+  document.getElementById('insightCoverageTitle').textContent=`Cobertura de ${fmt(coverage,1)}% sobre o Spend PB`;
+  document.getElementById('insightCoverage').textContent=coverage<2?
+    `Pipeline insuficiente: ${fmt(coverage,1)}% de potencial sobre o Spend PB sob gestão (R$ ${fmt(spendPB)} MM). Benchmark de peers (papel/celulose): 2–5%. Necessário identificar novas iniciativas ou revisar potencial das existentes.`:
+    coverage<=5?
+    `Cobertura adequada: ${fmt(coverage,1)}% de potencial identificado sobre o Spend PB. Alinhado ao benchmark de mercado para o setor (2–5%). Foco agora é executar — não identificar mais.`:
+    `Pipeline robusto: ${fmt(coverage,1)}%, acima do benchmark (2–5%). Garantir que as iniciativas têm dono, gate atualizado e prazo realista — volume alto pode diluir o foco de execução.`;
+
+  // ── Savings funnel ──────────────────────────────────────────
+  const g3=active.filter(r=>(gateNum(r.g)||0)>=3&&r.s!=='Cancelado');
+  const g4=active.filter(r=>(gateNum(r.g)||0)>=4&&r.s!=='Cancelado');
+  const realized=sum(data,'cap');
+  upsertChart('chartFunilSavings',{type:'bar',data:{
+    labels:['Spend PB sob gestão','Potencial identificado','Comprometido\n(Gate 3+)','Contratado\n(Gate 4+)','Realizado (RF)'],
+    datasets:[{data:[Math.round(spendPB),Math.round(potTotal),Math.round(sum(g3,'pot')),Math.round(sum(g4,'pot')),Math.round(realized)],
+      backgroundColor:['#4A5160','#2E5FA3','#5C8AC4','#C55A11','#1E7E44'],borderRadius:6,
+      borderSkipped:false}]
+  },options:{indexAxis:'y',plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:ctx=>`R$ ${fmt(ctx.raw)} MM`}}},
+    scales:{x:{grid:{color:'#EEF1F5'},ticks:{callback:v=>`R$${fmt(v)} MM`}},y:{grid:{display:false}}}}});
+
+  // ── Scenario analysis ──────────────────────────────────────
+  const bearCase=realized+sum(active.filter(r=>(gateNum(r.g)||0)>=5),'pot')*0.85;
+  const baseCase=realized+active.filter(r=>r.s!=='Concluído').reduce((s,r)=>s+pCapture(r)*r.pot,0);
+  const bullCase=realized+sum(ativos,'pot');
+  document.getElementById('scenBear').textContent=`R$ ${fmt(bearCase)} MM`;
+  document.getElementById('scenBase').textContent=`R$ ${fmt(baseCase)} MM`;
+  document.getElementById('scenBull').textContent=`R$ ${fmt(bullCase)} MM`;
+  upsertChart('chartScenarios',{type:'bar',data:{
+    labels:['🐻 Bear','🎯 Base','🚀 Bull'],
+    datasets:[{data:[Math.round(bearCase),Math.round(baseCase),Math.round(bullCase)],
+      backgroundColor:['#4A5160',COLORS.azulMed,COLORS.verde],borderRadius:6}]
+  },options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`R$ ${fmt(ctx.raw)} MM`}}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'#EEF1F5'},ticks:{callback:v=>`R$${fmt(v)}`}}}}});
+
+  // ── Probability distribution ────────────────────────────────
+  const bkts=[
+    ['0–20%',  r=>pCapture(r)<=0.20, '#B83227'],
+    ['20–40%', r=>pCapture(r)>0.20&&pCapture(r)<=0.40, '#E08B82'],
+    ['40–60%', r=>pCapture(r)>0.40&&pCapture(r)<=0.60, '#F0C040'],
+    ['60–80%', r=>pCapture(r)>0.60&&pCapture(r)<=0.80, '#6FBE8C'],
+    ['80–100%',r=>pCapture(r)>0.80, '#1E7E44'],
+  ];
+  const probQ=active.filter(r=>r.s!=='Concluído');
+  upsertChart('chartProbDist',{type:'bar',data:{
+    labels:bkts.map(b=>b[0]),
+    datasets:[
+      {label:'Qtd.',data:bkts.map(b=>probQ.filter(b[1]).length),backgroundColor:bkts.map(b=>b[2]),borderRadius:4,yAxisID:'y'},
+      {label:'R$ MM expostos',data:bkts.map(b=>Math.round(sum(probQ.filter(b[1]),'pot'))),backgroundColor:'transparent',
+       borderColor:COLORS.azulEsc,borderWidth:2,type:'line',yAxisID:'y2',tension:.3,pointRadius:5}
+    ]
+  },options:{plugins:{legend:{position:'top',align:'end',labels:{boxWidth:10,font:{size:10}}}},
+    scales:{
+      x:{grid:{display:false}},
+      y:{grid:{color:'#EEF1F5'},title:{display:true,text:'Qtd. iniciativas',font:{size:9}}},
+      y2:{position:'right',grid:{display:false},title:{display:true,text:'R$ MM',font:{size:9}}}
+    }}});
+
+  // ── Coverage by gerência ────────────────────────────────────
+  const GERS_E=[...new Set(data.map(r=>r.ger))].sort();
+  const covByGer=GERS_E.map(ger=>{
+    const gd=data.filter(r=>r.ger===ger);
+    const pb=sum(gd,'pb'); const pot=sum(gd,'pot');
+    return {ger, cov: pb>0?+(pot/pb*100).toFixed(1):0};
+  }).sort((a,b)=>b.cov-a.cov);
+  upsertChart('chartCoverageGer',{type:'bar',data:{
+    labels:covByGer.map(g=>g.ger),
+    datasets:[
+      {label:'Cobertura (%)',data:covByGer.map(g=>g.cov),
+        backgroundColor:covByGer.map(g=>g.cov<2?'#B83227':g.cov<=8?'#1E7E44':'#C55A11'),borderRadius:4},
+    ]
+  },options:{plugins:{
+    legend:{display:false},
+    annotation:{annotations:{
+      line2:{type:'line',yMin:2,yMax:2,borderColor:'#B83227',borderWidth:1.5,borderDash:[4,3],label:{display:true,content:'Mín. 2%',position:'end',font:{size:9}}},
+      line5:{type:'line',yMin:5,yMax:5,borderColor:'#C55A11',borderWidth:1.5,borderDash:[4,3],label:{display:true,content:'Ref. 5%',position:'end',font:{size:9}}},
+    }}
+  },scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#EEF1F5'},ticks:{callback:v=>v+'%'}}}}});
+
+  // ── RAG table ──────────────────────────────────────────────
+  document.getElementById('tableRagBody').innerHTML=GERS_E.map(ger=>{
+    const gd=data.filter(r=>r.ger===ger);
+    const ga=gd.filter(r=>r.s!=='Concluído'&&r.s!=='Cancelado');
+    const ge=ga.map(enrichSLA);
+    const pOk=ge.length?ge.filter(r=>r.status==='ok'||r.status==='sem_data').length/ge.length:1;
+    const cR=sum(gd,'pot')>0?sum(gd,'cap')/sum(gd,'pot'):0;
+    const sc=pOk*0.5+cR*0.5;
+    const rag=sc>0.55?'🟢 Verde':sc>0.30?'🟡 Amarelo':'🔴 Vermelho';
+    const ragC=sc>0.55?'#1E7E44':sc>0.30?'#C55A11':'#B83227';
+    const expCap=gd.reduce((s,r)=>s+pCapture(r)*r.pot,0);
+    const nRisc=ge.filter(r=>r.status==='vencido'||r.status==='critico').length;
+    return `<tr>
+      <td style="font-weight:600;">${ger}</td>
+      <td style="text-align:center;font-weight:700;color:${ragC}">${rag}</td>
+      <td style="text-align:center">${gd.length}</td>
+      <td style="text-align:center">${ga.length}</td>
+      <td style="text-align:right">${fmt(sum(gd,'pb'))}</td>
+      <td style="text-align:right">${fmt(sum(gd,'pot'))}</td>
+      <td style="text-align:right;font-weight:600;color:${COLORS.azulMed}">${fmt(expCap)}</td>
+      <td style="text-align:right;font-weight:600;color:${sum(gd,'cap')>0?'#1E7E44':'#9098A8'}">${fmt(sum(gd,'cap'))}</td>
+      <td style="text-align:center;font-weight:700;color:${nRisc>5?'#B83227':nRisc>0?'#C55A11':'#1E7E44'}">${nRisc}</td>
+    </tr>`;
+  }).join('');
+}
+
+
 function renderAll(){
   const data = filtered();
+  renderEstrategica(data);
   renderExec(data);
   renderEsteiraPredicao(data);
   renderPipeline(data);
