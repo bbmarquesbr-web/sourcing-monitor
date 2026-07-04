@@ -259,6 +259,7 @@ table.dtable tr:hover td{background:var(--azul-bg);}
   <button class="tab-btn" data-page="workload">Workload</button>
   <button class="tab-btn" data-page="alertas">Alertas &amp; Pendências</button>
   <button class="tab-btn" data-page="financeiro">Financeiro PB × Realizado</button>
+  <button class="tab-btn" data-page="esteira">🔭 Esteira Preditiva</button>
 </div>
 
 <!-- ============================================================ -->
@@ -472,6 +473,168 @@ table.dtable tr:hover td{background:var(--azul-bg);}
   </div>
 </div>
 
+<!-- ============================================================ -->
+<!-- PAGE: ESTEIRA PREDITIVA                                       -->
+<!-- ============================================================ -->
+<div class="page" id="page-esteira">
+  <div class="note-banner">
+    <span>🔭</span>
+    <div><b>Esteira Preditiva</b> — combina gate atual + SLAs contratuais para antecipar gargalos futuros,
+      especialmente no jurídico. Cada visual é anotado com seu equivalente em Power BI e a medida DAX correspondente.</div>
+  </div>
+
+  <!-- SLA Reference -->
+  <div class="card" style="margin-bottom:14px; padding:12px 18px;">
+    <div class="card-title" style="margin-bottom:10px;">Referência de SLAs (dias corridos) <span class="info">Compras Centralizadas · Referencial</span></div>
+    <div style="overflow-x:auto;">
+      <table class="dtable" style="font-size:10.5px; min-width:560px;">
+        <thead><tr>
+          <th>Tipo</th><th>Faixa de Valor</th>
+          <th style="background:#EEF3FA">Normal</th>
+          <th style="background:#FBE7D6">Emergencial</th>
+          <th style="background:#D5F0DC">Regularização</th>
+        </tr></thead>
+        <tbody>
+          <tr><td rowspan="3" style="font-weight:700;color:#4A5160">Materiais<br><span style="font-weight:400;font-size:9.5px">(MRO e Insumos)</span></td>
+              <td>Até R$ 50 mil</td><td style="text-align:center;font-weight:700">20 dias</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
+          <tr><td>R$ 50 mil a R$ 5 MM</td><td style="text-align:center;font-weight:700">30 dias</td><td style="text-align:center;color:#C55A11;font-weight:700">2 dias</td><td style="text-align:center;color:#1E7E44;font-weight:700">15 dias</td></tr>
+          <tr><td>Acima de R$ 5 MM (ou contrato jurídico)</td><td style="text-align:center;font-weight:700">70 dias</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
+          <tr><td rowspan="3" style="font-weight:700;color:#1E7E44">Serviços<br><span style="font-weight:400;font-size:9.5px">(Corp., Ind., Flor., Log.)</span></td>
+              <td>Até R$ 120 mil</td><td style="text-align:center;font-weight:700">30 dias</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
+          <tr><td>R$ 120 mil a R$ 5 MM</td><td style="text-align:center;font-weight:700">60 dias</td><td style="text-align:center;color:#C55A11;font-weight:700">5 dias</td><td style="text-align:center;color:#1E7E44;font-weight:700">30 dias</td></tr>
+          <tr><td>Acima de R$ 5 MM (ou contrato jurídico)</td><td style="text-align:center;font-weight:700">120 dias</td><td style="text-align:center">—</td><td style="text-align:center">—</td></tr>
+          <tr><td rowspan="2" style="font-weight:700;color:#C55A11">Projetos de<br>Investimento</td>
+              <td>Até R$ 5 MM</td><td style="text-align:center;font-weight:700">60 dias</td><td colspan="2" style="text-align:center;color:#9098A8;font-size:9.5px">Não se aplica</td></tr>
+          <tr><td>Acima de R$ 5 MM (ou contrato jurídico)</td><td style="text-align:center;font-weight:700">120 dias</td><td colspan="2" style="text-align:center;color:#9098A8;font-size:9.5px">Não se aplica</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="grid g4" style="margin-bottom:14px;">
+    <div class="card kpi alert-card" style="--accent:var(--vermelho)">
+      <div class="kpi-label">SLA Vencido (&gt;100%)</div>
+      <div class="kpi-value" id="kpiSlaVencido" style="color:var(--vermelho)">–</div>
+      <div class="kpi-sub">Iniciativas ativas com SLA extrapolado</div>
+    </div>
+    <div class="card kpi alert-card warn">
+      <div class="kpi-label">Crítico (90–100% do SLA)</div>
+      <div class="kpi-value" id="kpiSlaCritico" style="color:var(--laranja)">–</div>
+      <div class="kpi-sub">Próximas do limite — ação imediata</div>
+    </div>
+    <div class="card kpi alert-card warn">
+      <div class="kpi-label">Em Atenção (75–90%)</div>
+      <div class="kpi-value" id="kpiSlaAtencao" style="color:var(--laranja)">–</div>
+      <div class="kpi-sub">Monitorar semanalmente</div>
+    </div>
+    <div class="card kpi" style="--accent:var(--verde)">
+      <div class="kpi-label">Dentro do SLA (&lt;75%)</div>
+      <div class="kpi-value" id="kpiSlaOk" style="color:var(--verde)">–</div>
+      <div class="kpi-sub">Saudáveis no ritmo atual</div>
+    </div>
+  </div>
+
+  <!-- Charts row 1 -->
+  <div class="grid g2" style="margin-bottom:14px;">
+    <div class="card">
+      <div class="card-title">Projeção: Chegada à Formalização (Gate 4) por mês
+        <span class="info">PBI: Clustered Column · DAX: DATEADD([Data Início], [Dias até Gate 4], DAY)</span>
+      </div>
+      <div class="chart-wrap tall"><canvas id="chartProjecaoGate4"></canvas></div>
+      <div style="font-size:9.5px;color:#9098A8;margin-top:6px;">⚖ Contrato Jurídico = iniciativas com SLA de 70 ou 120 dias (Spend PB &gt; R$ 5MM). Atenção ao pico: concentração pode criar gargalo no jurídico.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Distribuição de % SLA Consumido (iniciativas ativas)
+        <span class="info">PBI: Clustered Bar · DAX: DIVIDE(DATEDIFF([Data Início],TODAY(),DAY),[SLA Normal])</span>
+      </div>
+      <div class="chart-wrap tall"><canvas id="chartSlaBurndown"></canvas></div>
+      <div style="font-size:9.5px;color:#9098A8;margin-top:6px;">Iniciativas sem Data de Início não são classificáveis — risco oculto que também precisa ser tratado.</div>
+    </div>
+  </div>
+
+  <!-- Esteira evolution -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-title">Evolução da Esteira: Hoje → +30 → +60 → +90 dias
+      <span class="info">PBI: Clustered Bar com What-If Parameter (dias) · DAX: projeção por gate</span>
+    </div>
+    <div class="chart-wrap"><canvas id="chartEsteiraEvolucao"></canvas></div>
+    <div style="font-size:9.5px;color:#9098A8;margin-top:6px;">Projeção baseada na velocidade média de avanço por gate. Serve para antecipar acúmulo na fase de Aprovação e Implementação.</div>
+  </div>
+
+  <!-- SLA Risk table -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-title">Top 20 Iniciativas em Risco de SLA
+      <span class="info">PBI: Matrix · Medida: [% SLA Consumido] DESC · Condicional: &gt;75% amarelo, &gt;100% vermelho</span>
+    </div>
+    <table class="dtable" id="tableSlaRisco">
+      <thead><tr>
+        <th>Gerência</th><th>Comprador</th><th>Descrição</th><th>Gate</th>
+        <th>SLA</th><th>Dias desde Início</th><th>% SLA</th>
+        <th>Proj. Gate 4</th><th>Jurídico?</th>
+      </tr></thead>
+      <tbody id="tableSlaRiscoBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Power BI Guide -->
+  <div class="card" style="border:1px solid var(--azul-med); background:var(--azul-bg);">
+    <div class="card-title">🗺 Guia de Replicação — Power BI <span class="info">Medidas DAX e estrutura de dados</span></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; font-size:11.5px;">
+      <div>
+        <div style="font-weight:700;color:var(--azul-esc);margin-bottom:8px;">Coluna calculada: Tipo SLA</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:10px;line-height:1.6;border:1px solid var(--cinza-300)">Tipo SLA =
+SWITCH(TRUE(),
+  [Gerencia] = "MRO"
+  || CONTAINSSTRING([Gerencia],"Insumos"),
+  "Materiais",
+  [Gerencia] = "CapEx Industrial",
+  "CapEx",
+  "Serviços")</code>
+        <div style="font-weight:700;color:var(--azul-esc);margin:12px 0 8px;">Coluna calculada: SLA Normal (dias)</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:10px;line-height:1.6;border:1px solid var(--cinza-300)">SLA Normal =
+SWITCH(TRUE(),
+  [Tipo SLA]="Materiais" && [Spend PB MM]<0.05, 20,
+  [Tipo SLA]="Materiais" && [Spend PB MM]<5, 30,
+  [Tipo SLA]="Materiais", 70,
+  [Tipo SLA]="Serviços" && [Spend PB MM]<0.12, 30,
+  [Tipo SLA]="Serviços" && [Spend PB MM]<5, 60,
+  [Tipo SLA]="Serviços", 120,
+  [Tipo SLA]="CapEx" && [Spend PB MM]<5, 60,
+  120)</code>
+      </div>
+      <div>
+        <div style="font-weight:700;color:var(--azul-esc);margin-bottom:8px;">Medida: % SLA Consumido</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:10px;line-height:1.6;border:1px solid var(--cinza-300)">% SLA Consumido =
+DIVIDE(
+  DATEDIFF(
+    [Data Início],
+    TODAY(),
+    DAY
+  ),
+  [SLA Normal]
+)</code>
+        <div style="font-weight:700;color:var(--azul-esc);margin:12px 0 8px;">Coluna calculada: Proj. Gate 4</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:10px;line-height:1.6;border:1px solid var(--cinza-300)">Proj Gate 4 =
+[Data Início] +
+SWITCH([Gate Num],
+  0, 75, 1, 55,
+  2, 35, 3, 15,
+  4, 0,  5, -20,
+  6, -60, BLANK())
+// Formatar como Data</code>
+        <div style="font-weight:700;color:var(--azul-esc);margin:12px 0 8px;">Formatação condicional: % SLA</div>
+        <code style="display:block;background:#fff;padding:8px;border-radius:4px;font-size:10px;line-height:1.6;border:1px solid var(--cinza-300)">Regra de cor (fundo):
+&gt; 100% → Vermelho (#B83227)
+75–100% → Laranja (#C55A11)
+50–75%  → Amarelo (#F0C040)
+&lt; 50%   → Verde (#1E7E44)</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <div class="footer-note">
   Mockup gerado a partir das 9 bases reais consolidadas (2.445 iniciativas) · Estrutura de referência para construção do painel definitivo em Power BI / GCP
 </div>
@@ -637,9 +800,149 @@ const STATUS_COLOR = {
 };
 const GATE_ORDER = ['0. Não Iniciado','1. Escopo/Ideação','2. Business Case','3. Negociação','4. Aprovação','5. Implementação','6. Encerramento','Não informado'];
 
+
+// ============================================================
+// PAGE: ESTEIRA PREDITIVA
+// ============================================================
+const TODAY_PRED = new Date('2026-07-03');
+
+function getSLATipo(ger) {
+  if(ger==='MRO' || ger.includes('Insumos')) return 'Materiais';
+  if(ger==='CapEx Industrial') return 'CapEx';
+  return 'Serviços';
+}
+function getSLADias(tipo, pb) {
+  if(tipo==='Materiais'){
+    if(pb<0.05) return 20;
+    if(pb<5)    return 30;
+    return 70;
+  }
+  if(tipo==='Serviços'){
+    if(pb<0.12) return 30;
+    if(pb<5)    return 60;
+    return 120;
+  }
+  // CapEx
+  return pb<5 ? 60 : 120;
+}
+function gateNum(g){
+  if(!g||g==='Não informado') return null;
+  const m=String(g).match(/^(\d+)/);
+  return m?parseInt(m[1]):null;
+}
+function diffDays(a,b){ return Math.round((b-a)/(1000*3600*24)); }
+
+// Estimated days from current gate to Gate 4 (Aprovação)
+const GATE_TO_4 = {0:75,1:55,2:35,3:15,4:0,5:-20,6:-60};
+
+function enrichSLA(r){
+  const tipo = getSLATipo(r.ger||'');
+  const sla  = getSLADias(tipo, r.pb||0);
+  const gn   = gateNum(r.g);
+  const d1   = r.d1 ? new Date(r.d1) : null;
+  let dias=null, pct=null, status='sem_data';
+  if(d1 && sla){
+    dias = diffDays(d1, TODAY_PRED);
+    pct  = Math.round(dias/sla*100);
+    status = pct>=100?'vencido':pct>=90?'critico':pct>=75?'atencao':'ok';
+  }
+  let projGate4=null;
+  if(gn!==null && gn<5 && r.s!=='Concluído' && r.s!=='Cancelado'){
+    const d=GATE_TO_4[gn];
+    if(d>0) projGate4=new Date(TODAY_PRED.getTime()+d*24*3600*1000);
+  }
+  return {...r, tipo, sla, gn, dias, pct, status, projGate4, legalRisk: sla>=70};
+}
+
+const MES_PT=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+function renderEsteiraPredicao(data){
+  const ativos = data.filter(r=>r.s!=='Concluído'&&r.s!=='Cancelado');
+  const en = ativos.map(enrichSLA);
+
+  // KPIs
+  document.getElementById('kpiSlaVencido').textContent = en.filter(r=>r.status==='vencido').length;
+  document.getElementById('kpiSlaCritico').textContent = en.filter(r=>r.status==='critico').length;
+  document.getElementById('kpiSlaAtencao').textContent = en.filter(r=>r.status==='atencao').length;
+  document.getElementById('kpiSlaOk').textContent      = en.filter(r=>r.status==='ok').length;
+
+  // ── Projeção de chegada ao Gate 4 (próximos 8 meses) ──
+  const meses=[];
+  for(let i=0;i<8;i++){
+    const d=new Date(TODAY_PRED);
+    d.setMonth(d.getMonth()+i);
+    meses.push({y:d.getFullYear(),m:d.getMonth(),lbl:`${MES_PT[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`});
+  }
+  const chegadas = meses.map(m=>en.filter(r=>r.projGate4&&r.projGate4.getFullYear()===m.y&&r.projGate4.getMonth()===m.m).length);
+  const juridico  = meses.map(m=>en.filter(r=>r.projGate4&&r.legalRisk&&r.projGate4.getFullYear()===m.y&&r.projGate4.getMonth()===m.m).length);
+  upsertChart('chartProjecaoGate4',{type:'bar',data:{labels:meses.map(m=>m.lbl),datasets:[
+    {label:'Total na Formalização',data:chegadas,backgroundColor:COLORS.azulMed,borderRadius:4},
+    {label:'⚖ Requer Contrato Jurídico',data:juridico,backgroundColor:COLORS.vermelho,borderRadius:4}
+  ]},options:{plugins:{legend:{position:'top',align:'end',labels:{boxWidth:10,font:{size:10}}}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'#EEF1F5'}}}}});
+
+  // ── Distribuição % SLA ──
+  const bkts=[
+    ['< 50%',   r=>r.pct!==null&&r.pct<50,         '#1E7E44'],
+    ['50–75%',  r=>r.pct!==null&&r.pct>=50&&r.pct<75, '#6FBE8C'],
+    ['75–90%',  r=>r.pct!==null&&r.pct>=75&&r.pct<90, '#C55A11'],
+    ['90–100%', r=>r.pct!==null&&r.pct>=90&&r.pct<100,'#E08B82'],
+    ['> 100%',  r=>r.pct!==null&&r.pct>=100,          '#B83227'],
+    ['Sem data',r=>r.pct===null,                       '#9098A8'],
+  ];
+  upsertChart('chartSlaBurndown',{type:'bar',data:{
+    labels:bkts.map(b=>b[0]),
+    datasets:[{data:bkts.map(b=>en.filter(b[1]).length),backgroundColor:bkts.map(b=>b[2]),borderRadius:4}]
+  },options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#EEF1F5'}}}}});
+
+  // ── Evolução da esteira: Hoje / +30 / +60 / +90 ──
+  const gLabels=['Gate 0','Gate 1','Gate 2','Gate 3','Gate 4','Gate 5','Gate 6'];
+  function gDist(daysAhead){
+    return [0,1,2,3,4,5,6].map(target=>
+      en.filter(r=>{
+        if(r.gn===null) return false;
+        if(daysAhead===0) return r.gn===target;
+        const toG4=GATE_TO_4[r.gn];
+        if(toG4===undefined||toG4<=0) return r.gn===target;
+        const ratio=Math.min(1,daysAhead/toG4);
+        const proj=Math.min(4,Math.round(r.gn+(4-r.gn)*ratio));
+        return proj===target;
+      }).length
+    );
+  }
+  upsertChart('chartEsteiraEvolucao',{type:'bar',data:{labels:gLabels,datasets:[
+    {label:'Hoje',        data:gDist(0),  backgroundColor:COLORS.azulEsc, borderRadius:4},
+    {label:'+30 dias',    data:gDist(30), backgroundColor:COLORS.azulMed, borderRadius:4},
+    {label:'+60 dias',    data:gDist(60), backgroundColor:'#7FA8D9',      borderRadius:4},
+    {label:'+90 dias',    data:gDist(90), backgroundColor:COLORS.cinza,   borderRadius:4},
+  ]},options:{plugins:{legend:{position:'top',align:'end',labels:{boxWidth:10,font:{size:10}}}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'#EEF1F5'}}}}});
+
+  // ── Tabela risco SLA top 20 ──
+  const sorted=[...en].filter(r=>r.pct!==null&&r.pct>70)
+    .sort((a,b)=>b.pct-a.pct).slice(0,20);
+  document.getElementById('tableSlaRiscoBody').innerHTML=sorted.map(r=>{
+    const sc=r.status==='vencido'?'red':'orange';
+    const pg=r.projGate4?r.projGate4.toLocaleDateString('pt-BR'):'—';
+    return `<tr>
+      <td>${r.ger}</td>
+      <td style="white-space:nowrap;">${r.o}</td>
+      <td style="max-width:260px;white-space:normal;line-height:1.4;font-size:10.5px;" title="${(r.de||'').replace(/"/g,'&quot;')}">${r.de||'—'}</td>
+      <td style="font-size:10.5px;">${r.g}</td>
+      <td style="text-align:center;white-space:nowrap;">${r.sla} dias</td>
+      <td style="text-align:center;">${r.dias}</td>
+      <td style="text-align:center;"><span class="tag ${sc}" style="font-size:11px;font-weight:700;">${r.pct}%</span></td>
+      <td style="white-space:nowrap;">${pg}</td>
+      <td style="text-align:center;">${r.legalRisk?'<span class="tag orange" style="font-size:10px;">⚖ Jurídico</span>':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+
 function renderAll(){
   const data = filtered();
   renderExec(data);
+  renderEsteiraPredicao(data);
   renderPipeline(data);
   renderWorkload(data);
   renderAlertas(data);
